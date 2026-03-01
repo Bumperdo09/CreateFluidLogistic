@@ -1,0 +1,39 @@
+{
+  "itemGroup.fluidlogistics.fluidlogistics_tab": "Create: Fluid Logistics",
+  "block.fluidlogistics.fluid_packager": "Fluid Packager",
+  "block.fluidlogistics.waterproof_cardboard_block": "Waterproof Cardboard Block",
+  "item.fluidlogistics.compressed_storage_tank": "Compressed Storage Tank",
+  "item.fluidlogistics.rare_fluid_package": "Fluid Package",
+
+  "fluidlogistics.configuration.title": "Fluid Logistics Configuration",
+  "fluidlogistics.configuration.section.fluidlogistics.common.toml": "Fluid Logistics Configuration",
+  "fluidlogistics.configuration.section.fluidlogistics.common.toml.title": "Fluid Logistics Configuration",
+  "fluidlogistics.configuration.items": "Item List",
+  "fluidlogistics.configuration.compressedTankCapacity": "Compressed Tank Capacity",
+  "fluidlogistics.configuration.compressedTankCapacity.tooltip": "Maximum fluid amount the compressed storage tank can hold (in mB)",
+
+  "tooltip.fluidlogistics.alt_click_hint": "Alt + Click a fluid container to request fluid",
+  "tooltip.fluidlogistics.redstone_requester.fluid_slot": "Alt + Click fluid container",
+
+  "fluidlogistics.ponder.fluid_packager.header": "Packaging and Unpacking Fluid Packages",
+  "fluidlogistics.ponder.fluid_packager.text_1": "The Fluid Packager can package fluids from fluid tanks into fluid packages",
+  "fluidlogistics.ponder.fluid_packager.text_2": "When powered by a redstone signal, it extracts fluid from the tank and packages it into fluid packages",
+  "fluidlogistics.ponder.fluid_packager.text_3": "Fluid packages can be picked up and transported just like any other item",
+  "fluidlogistics.ponder.fluid_packager.text_4": "Placing a fluid package into the Fluid Packager will unpack it and inject the fluid into the fluid tank",
+  "fluidlogistics.ponder.fluid_packager.text_5": "Full",
+  "fluidlogistics.ponder.fluid_packager.text_6": "The Fluid Packager cannot accept fluid packages that cannot be fully unpacked",
+
+  "fluidlogistics.ponder.fluid_packager_address.header": "Routing Fluid Packages Using Addresses",
+  "fluidlogistics.ponder.fluid_packager_address.text_1": "Warehouse",
+  "fluidlogistics.ponder.fluid_packager_address.text_2": "When placing a sign on the Fluid Packager...",
+  "fluidlogistics.ponder.fluid_packager_address.text_3": "→ Warehouse",
+  "fluidlogistics.ponder.fluid_packager_address.text_4": "Packaged fluid packages will carry a line of text with their address",
+  "fluidlogistics.ponder.fluid_packager_address.text_5": "Package filters route fluid packages based on their addresses",
+  "fluidlogistics.ponder.fluid_packager_address.text_6": "→ Warehouse",
+  "fluidlogistics.ponder.fluid_packager_address.text_7": "Factory",
+  "fluidlogistics.ponder.fluid_packager_address.text_8": "→ Factory",
+  "fluidlogistics.ponder.fluid_packager_address.text_9": "Factory",
+  "fluidlogistics.ponder.fluid_packager_address.text_10": "A Mechanical Saw can directly unpack fluid packages into compressed storage tanks",
+  "fluidlogistics.ponder.fluid_packager_address.text_11": "Besides filters, Freight Docks and Mailboxes can also route fluid packages",
+  "fluidlogistics.ponder.fluid_packager_address.text_12": "Check their Ponder interfaces to learn about their behavior"
+}

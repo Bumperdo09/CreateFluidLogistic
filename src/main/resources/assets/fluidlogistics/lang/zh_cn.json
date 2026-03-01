@@ -1,0 +1,39 @@
+{
+  "itemGroup.fluidlogistics.fluidlogistics_tab": "机械动力：流体包裹",
+  "block.fluidlogistics.fluid_packager": "流体打包机",
+  "block.fluidlogistics.waterproof_cardboard_block": "防水纸板块",
+  "item.fluidlogistics.compressed_storage_tank": "压缩储罐",
+  "item.fluidlogistics.rare_fluid_package": "流体包裹",
+
+  "fluidlogistics.configuration.title": "流体包裹配置",
+  "fluidlogistics.configuration.section.fluidlogistics.common.toml": "流体包裹配置",
+  "fluidlogistics.configuration.section.fluidlogistics.common.toml.title": "流体包裹配置",
+  "fluidlogistics.configuration.items": "物品列表",
+  "fluidlogistics.configuration.compressedTankCapacity": "压缩储罐容量",
+  "fluidlogistics.configuration.compressedTankCapacity.tooltip": "压缩储罐可以容纳的最大流体量（单位：mB）",
+
+  "tooltip.fluidlogistics.alt_click_hint": "按住Alt并点击流体容器以请求流体",
+  "tooltip.fluidlogistics.redstone_requester.fluid_slot": "Alt + 点击流体容器",
+
+  "fluidlogistics.ponder.fluid_packager.header": "流体打包和拆解流体包裹",
+  "fluidlogistics.ponder.fluid_packager.text_1": "流体打包机可以将流体储罐中的流体打包成流体包裹",
+  "fluidlogistics.ponder.fluid_packager.text_2": "接入红石信号，它会从储罐中提取流体并打包进流体包裹",
+  "fluidlogistics.ponder.fluid_packager.text_3": "流体包裹可以被捡起，也可以进行运输，就像其他任何物品一样",
+  "fluidlogistics.ponder.fluid_packager.text_4": "放入流体打包机的流体包裹将被拆解，而流体将被注入到流体储罐中",
+  "fluidlogistics.ponder.fluid_packager.text_5": "已满",
+  "fluidlogistics.ponder.fluid_packager.text_6": "流体打包机无法接收无法完全拆卸的流体包裹",
+
+  "fluidlogistics.ponder.fluid_packager_address.header": "使用地址路由流体包裹",
+  "fluidlogistics.ponder.fluid_packager_address.text_1": "仓库",
+  "fluidlogistics.ponder.fluid_packager_address.text_2": "当在流体打包机上放置告示牌时……",
+  "fluidlogistics.ponder.fluid_packager_address.text_3": "→ 仓库",
+  "fluidlogistics.ponder.fluid_packager_address.text_4": "打包完毕的流体包裹将会携带一行写有其地址的文字",
+  "fluidlogistics.ponder.fluid_packager_address.text_5": "包裹过滤器根据流体包裹地址制定它们的路线",
+  "fluidlogistics.ponder.fluid_packager_address.text_6": "→ 仓库",
+  "fluidlogistics.ponder.fluid_packager_address.text_7": "工厂",
+  "fluidlogistics.ponder.fluid_packager_address.text_8": "→ 工厂",
+  "fluidlogistics.ponder.fluid_packager_address.text_9": "工厂",
+  "fluidlogistics.ponder.fluid_packager_address.text_10": "机械锯可以直接将流体包裹拆包成压缩储罐",
+  "fluidlogistics.ponder.fluid_packager_address.text_11": "除过滤器外，货物蛙港和邮箱亦可以指定流体包裹路线",
+  "fluidlogistics.ponder.fluid_packager_address.text_12": "查看它们的思索界面来了解它们的行为"
+}

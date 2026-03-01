@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "fluidlogistics:waterproof_cardboard_block"
+    },
+    "C": {
+      "tag": "c:ingots/copper"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "G": {
+      "item": "create:framed_glass"
+    }
+  },
+  "pattern": [
+    "GCG",
+    "CAC",
+    "RCR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fluidlogistics:fluid_packager"
+  }
+}

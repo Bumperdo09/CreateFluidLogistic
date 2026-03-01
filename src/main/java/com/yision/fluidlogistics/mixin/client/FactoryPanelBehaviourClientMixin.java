@@ -1,0 +1,67 @@
+package com.yision.fluidlogistics.mixin.client;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.simibubi.create.content.fluids.transfer.GenericItemEmptying;
+import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBehaviour;
+import com.yision.fluidlogistics.network.FactoryPanelSetFluidFilterPacket;
+
+import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+
+@OnlyIn(Dist.CLIENT)
+@Mixin(FactoryPanelBehaviour.class)
+public class FactoryPanelBehaviourClientMixin {
+
+    @Inject(
+        method = "onShortInteract",
+        at = @At("HEAD"),
+        cancellable = true,
+        remap = false
+    )
+    private void fluidlogistics$clientHandleAltClick(Player player, InteractionHand hand, Direction side,
+            BlockHitResult hitResult, CallbackInfo ci) {
+        if (!player.level().isClientSide()) {
+            return;
+        }
+        
+        if (!net.minecraft.client.gui.screens.Screen.hasAltDown()) {
+            return;
+        }
+        
+        ItemStack heldItem = player.getItemInHand(hand);
+        if (heldItem.isEmpty()) {
+            return;
+        }
+        
+        LocalPlayer localPlayer = Minecraft.getInstance().player;
+        if (localPlayer == null || localPlayer != player) {
+            return;
+        }
+        
+        if (!GenericItemEmptying.canItemBeEmptied(player.level(), heldItem)) {
+            return;
+        }
+        
+        FactoryPanelBehaviour self = (FactoryPanelBehaviour) (Object) this;
+        
+        FactoryPanelSetFluidFilterPacket packet = new FactoryPanelSetFluidFilterPacket(
+                self.getPanelPosition(),
+                hand
+        );
+        CatnipServices.NETWORK.sendToServer(packet);
+        
+        ci.cancel();
+    }
+}
