@@ -121,10 +121,8 @@ public abstract class LogisticsManagerMixin {
         java.util.Random r = new java.util.Random();
         int unifiedOrderId = r.nextInt();
         PackageOrderWithCrafts context = order;
-        boolean contextUsed = false;
         
-        Map<Object, Integer> packagerToLinkIndex = new IdentityHashMap<>();
-        List<Object> orderedPackagers = new ArrayList<>();
+        List<Object> usedPackagers = new ArrayList<>();
         Map<Object, MutableInt> packagerToPackageCounter = new IdentityHashMap<>();
         
         Multimap<IFluidPackager, PackagingRequest> fluidRequests = HashMultimap.create();
@@ -154,11 +152,15 @@ public abstract class LogisticsManagerMixin {
                         continue;
                     }
 
-                    int linkIndex = fluidlogistics$getOrCreateLinkIndex(fluidPackager, packagerToLinkIndex, orderedPackagers);
-                    MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(fluidPackager, k -> new MutableInt(0));
-                    MutableBoolean isFinalLink = fluidlogistics$createFinalLinkTracker(linkIndex, orderedPackagers.size(), finalLinkTracker);
+                    int usedIndex = usedPackagers.indexOf(fluidPackager);
+                    int linkIndex = usedIndex == -1 ? usedPackagers.size() : usedIndex;
+                    MutableBoolean isFinalLink = new MutableBoolean(false);
+                    if (linkIndex == usedPackagers.size() - 1)
+                        isFinalLink = finalLinkTracker;
 
-                    PackageOrderWithCrafts contextToSend = !contextUsed ? context : null;
+                    MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(fluidPackager, k -> new MutableInt(0));
+
+                    PackageOrderWithCrafts contextToSend = context;
                     Pair<IFluidPackager, PackagingRequest> request = fluidPackager.processFluidRequest(
                         entry.stack, remainingCount, address, linkIndex, isFinalLink, unifiedOrderId, contextToSend, ignoredHandler);
                     
@@ -169,21 +171,17 @@ public abstract class LogisticsManagerMixin {
                     fluidRequests.put(request.getFirst(), request.getSecond());
 
                     int processedCount = request.getSecond().getCount();
-                    if (processedCount > 0) {
-                        if (!contextUsed) {
-                            contextUsed = true;
-                        }
-                        packageCounter.increment();
+                    if (processedCount > 0 && usedIndex == -1) {
+                        context = null;
+                        usedPackagers.add(fluidPackager);
+                        finalLinkTracker = isFinalLink;
                     }
 
                     remainingCount -= processedCount;
-                    if (remainingCount > 0) {
+                    if (remainingCount > 0)
                         continue;
-                    }
-                    
-                    if (isLastStack) {
+                    if (isLastStack)
                         finalLinkTracker.setTrue();
-                    }
                     break;
                 } else {
                     PackagerBlockEntity packager = fluidlogistics$getPackagerFromLink(link);
@@ -191,11 +189,15 @@ public abstract class LogisticsManagerMixin {
                         continue;
                     }
 
-                    int linkIndex = fluidlogistics$getOrCreateLinkIndex(packager, packagerToLinkIndex, orderedPackagers);
-                    MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(packager, k -> new MutableInt(0));
-                    MutableBoolean isFinalLink = fluidlogistics$createFinalLinkTracker(linkIndex, orderedPackagers.size(), finalLinkTracker);
+                    int usedIndex = usedPackagers.indexOf(packager);
+                    int linkIndex = usedIndex == -1 ? usedPackagers.size() : usedIndex;
+                    MutableBoolean isFinalLink = new MutableBoolean(false);
+                    if (linkIndex == usedPackagers.size() - 1)
+                        isFinalLink = finalLinkTracker;
 
-                    PackageOrderWithCrafts contextToSend = !contextUsed ? context : null;
+                    MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(packager, k -> new MutableInt(0));
+
+                    PackageOrderWithCrafts contextToSend = context;
                     Pair<PackagerBlockEntity, PackagingRequest> request = link.processRequest(
                         entry.stack, remainingCount, address, linkIndex, isFinalLink, unifiedOrderId, contextToSend, ignoredHandler);
                     
@@ -206,21 +208,17 @@ public abstract class LogisticsManagerMixin {
                     regularRequests.put(request.getFirst(), request.getSecond());
 
                     int processedCount = request.getSecond().getCount();
-                    if (processedCount > 0) {
-                        if (!contextUsed) {
-                            contextUsed = true;
-                        }
-                        packageCounter.increment();
+                    if (processedCount > 0 && usedIndex == -1) {
+                        context = null;
+                        usedPackagers.add(packager);
+                        finalLinkTracker = isFinalLink;
                     }
 
                     remainingCount -= processedCount;
-                    if (remainingCount > 0) {
+                    if (remainingCount > 0)
                         continue;
-                    }
-                    
-                    if (isLastStack) {
+                    if (isLastStack)
                         finalLinkTracker.setTrue();
-                    }
                     break;
                 }
             }
@@ -263,8 +261,7 @@ public abstract class LogisticsManagerMixin {
         PackageOrderWithCrafts context = order;
         boolean contextUsed = false;
         
-        Map<Object, Integer> packagerToLinkIndex = new IdentityHashMap<>();
-        List<Object> orderedPackagers = new ArrayList<>();
+        List<Object> usedPackagers = new ArrayList<>();
         Map<Object, MutableInt> packagerToPackageCounter = new IdentityHashMap<>();
         
         Multimap<IFluidPackager, PackagingRequest> fluidRequests = HashMultimap.create();
@@ -294,9 +291,13 @@ public abstract class LogisticsManagerMixin {
                         continue;
                     }
 
-                    int linkIndex = fluidlogistics$getOrCreateLinkIndex(fluidPackager, packagerToLinkIndex, orderedPackagers);
+                    int usedIndex = usedPackagers.indexOf(fluidPackager);
+                    int linkIndex = usedIndex == -1 ? usedPackagers.size() : usedIndex;
+                    MutableBoolean isFinalLink = new MutableBoolean(false);
+                    if (linkIndex == usedPackagers.size() - 1)
+                        isFinalLink = finalLinkTracker;
+
                     MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(fluidPackager, k -> new MutableInt(0));
-                    MutableBoolean isFinalLink = fluidlogistics$createFinalLinkTracker(linkIndex, orderedPackagers.size(), finalLinkTracker);
 
                     PackageOrderWithCrafts contextToSend = !contextUsed ? context : null;
                     Pair<IFluidPackager, PackagingRequest> request = fluidPackager.processFluidRequest(
@@ -312,6 +313,10 @@ public abstract class LogisticsManagerMixin {
                     if (processedCount > 0) {
                         if (!contextUsed) {
                             contextUsed = true;
+                        }
+                        if (usedIndex == -1) {
+                            usedPackagers.add(fluidPackager);
+                            finalLinkTracker = isFinalLink;
                         }
                         packageCounter.increment();
                     }
@@ -331,9 +336,13 @@ public abstract class LogisticsManagerMixin {
                         continue;
                     }
 
-                    int linkIndex = fluidlogistics$getOrCreateLinkIndex(packager, packagerToLinkIndex, orderedPackagers);
+                    int usedIndex = usedPackagers.indexOf(packager);
+                    int linkIndex = usedIndex == -1 ? usedPackagers.size() : usedIndex;
+                    MutableBoolean isFinalLink = new MutableBoolean(false);
+                    if (linkIndex == usedPackagers.size() - 1)
+                        isFinalLink = finalLinkTracker;
+
                     MutableInt packageCounter = packagerToPackageCounter.computeIfAbsent(packager, k -> new MutableInt(0));
-                    MutableBoolean isFinalLink = fluidlogistics$createFinalLinkTracker(linkIndex, orderedPackagers.size(), finalLinkTracker);
 
                     PackageOrderWithCrafts contextToSend = !contextUsed ? context : null;
                     Pair<PackagerBlockEntity, PackagingRequest> request = link.processRequest(
@@ -349,6 +358,10 @@ public abstract class LogisticsManagerMixin {
                     if (processedCount > 0) {
                         if (!contextUsed) {
                             contextUsed = true;
+                        }
+                        if (usedIndex == -1) {
+                            usedPackagers.add(packager);
+                            finalLinkTracker = isFinalLink;
                         }
                         packageCounter.increment();
                     }
@@ -396,29 +409,6 @@ public abstract class LogisticsManagerMixin {
         }
 
         return availableLinks;
-    }
-
-    @Unique
-    private static int fluidlogistics$getOrCreateLinkIndex(Object packager, Map<Object, Integer> packagerToLinkIndex, 
-            List<Object> orderedPackagers) {
-        Integer existingIndex = packagerToLinkIndex.get(packager);
-        if (existingIndex != null) {
-            return existingIndex;
-        }
-        
-        int newIndex = orderedPackagers.size();
-        packagerToLinkIndex.put(packager, newIndex);
-        orderedPackagers.add(packager);
-        return newIndex;
-    }
-
-    @Unique
-    private static MutableBoolean fluidlogistics$createFinalLinkTracker(int linkIndex, int totalLinks, 
-            MutableBoolean globalFinalTracker) {
-        if (totalLinks > 0 && linkIndex == totalLinks - 1) {
-            return globalFinalTracker;
-        }
-        return new MutableBoolean(false);
     }
 
     @Unique
