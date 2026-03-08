@@ -2,6 +2,12 @@
   "itemGroup.fluidlogistics.fluidlogistics_tab": "机械动力：流体包裹",
   "block.fluidlogistics.fluid_packager": "流体打包机",
   "block.fluidlogistics.waterproof_cardboard_block": "防水纸板块",
+  "block.fluidlogistics.multi_fluid_tank": "多流体储罐",
+  "block.fluidlogistics.horizontal_multi_fluid_tank": "横向多流体储罐",
+  "block.fluidlogistics.multi_fluid_tank.tooltip.summary": "_来自海上机械师的神秘物品_",
+  "block.fluidlogistics.multi_fluid_tank.tooltip.condition1": "放置在地面上时",
+  "block.fluidlogistics.multi_fluid_tank.tooltip.behaviour1": "能够同时存储多达_8种不同类型_流体",
+  "block.fluidlogistics.horizontal_multi_fluid_tank.tooltip.summary": "够同时存储多达_8种不同类型_流体",
   "item.fluidlogistics.compressed_storage_tank": "压缩储罐",
   "item.fluidlogistics.rare_fluid_package": "流体包裹",
 

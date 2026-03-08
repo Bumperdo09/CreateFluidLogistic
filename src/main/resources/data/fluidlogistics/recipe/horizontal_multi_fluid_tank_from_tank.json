@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "fluidlogistics:multi_fluid_tank"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "fluidlogistics:horizontal_multi_fluid_tank"
+  }
+}
