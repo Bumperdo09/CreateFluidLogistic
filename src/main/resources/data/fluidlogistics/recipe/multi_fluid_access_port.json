@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "tag": "c:plates/copper"
+    },
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "T": {
+      "item": "fluidlogistics:multi_fluid_tank"
+    }
+  },
+  "pattern": [
+    " B ",
+    "ETE",
+    " E "
+  ],
+  "result": {
+    "count": 1,
+    "id": "fluidlogistics:multi_fluid_access_port"
+  }
+}
