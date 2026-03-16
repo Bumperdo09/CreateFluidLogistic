@@ -1,4 +1,4 @@
-package com.yision.fluidlogistics.block;
+package com.yision.fluidlogistics.block.FluidPackager;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;

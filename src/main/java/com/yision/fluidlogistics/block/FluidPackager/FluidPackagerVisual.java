@@ -1,4 +1,4 @@
-package com.yision.fluidlogistics.block;
+package com.yision.fluidlogistics.block.FluidPackager;
 
 import java.util.function.Consumer;
 

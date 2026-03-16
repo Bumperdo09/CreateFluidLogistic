@@ -1,8 +1,10 @@
-package com.yision.fluidlogistics.block;
+package com.yision.fluidlogistics.block.FluidPackager;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -15,7 +17,6 @@ import com.simibubi.create.Create;
 import com.simibubi.create.content.fluids.tank.CreativeFluidTankBlockEntity.CreativeSmartFluidTank;
 import com.simibubi.create.api.packager.unpacking.UnpackingHandler;
 import com.simibubi.create.compat.computercraft.AbstractComputerBehaviour;
-import com.simibubi.create.compat.computercraft.ComputerCraftProxy;
 import com.simibubi.create.compat.computercraft.events.PackageEvent;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageItem;
@@ -24,7 +25,6 @@ import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlock;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportBlockEntity;
 import com.simibubi.create.content.logistics.packager.InventorySummary;
-import com.simibubi.create.content.logistics.packager.PackagingRequest;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour.RequestType;
 import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlock;
 import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlockEntity;
@@ -41,10 +41,12 @@ import com.simibubi.create.foundation.blockEntity.behaviour.inventory.TankManipu
 import com.simibubi.create.foundation.blockEntity.behaviour.inventory.VersionedInventoryTrackerBehaviour;
 import com.simibubi.create.foundation.item.ItemHelper;
 import com.yision.fluidlogistics.api.IFluidPackager;
+import com.yision.fluidlogistics.advancement.AllTriggers;
 import com.yision.fluidlogistics.config.Config;
 import com.yision.fluidlogistics.item.CompressedTankItem;
 import com.yision.fluidlogistics.registry.AllBlockEntities;
 import com.yision.fluidlogistics.registry.AllItems;
+import com.yision.fluidlogistics.util.IPackagerOverrideData;
 
 import net.createmod.catnip.codecs.CatnipCodecUtils;
 import net.createmod.catnip.data.Iterate;
@@ -56,6 +58,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -67,6 +70,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -76,13 +80,14 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
-public class FluidPackagerBlockEntity extends SmartBlockEntity implements Clearable, IFluidPackager {
+public class FluidPackagerBlockEntity extends SmartBlockEntity implements Clearable, IFluidPackager, IPackagerOverrideData {
 
     public static final int CYCLE = 20;
 
     public boolean redstonePowered;
     public int buttonCooldown;
     public String signBasedAddress;
+    public String clipboardAddress;
 
     public TankManipulationBehaviour fluidTarget;
     public InvManipulationBehaviour itemTarget;
@@ -99,8 +104,10 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
     public AbstractComputerBehaviour computerBehaviour;
     public Boolean hasCustomComputerAddress;
     public String customComputerAddress;
+    private boolean manualOverrideLocked;
 
     private InventorySummary availableItems;
+    private Map<FluidTypeKey, Integer> availableFluidSnapshot;
     private VersionedInventoryTrackerBehaviour invVersionTracker;
     private AdvancementBehaviour advancements;
 
@@ -115,8 +122,11 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         queuedExitingPackages = new LinkedList<>();
         pendingFluidsToInsert = new LinkedList<>();
         signBasedAddress = "";
+        clipboardAddress = "";
         customComputerAddress = "";
         hasCustomComputerAddress = false;
+        manualOverrideLocked = false;
+        availableFluidSnapshot = Map.of();
         buttonCooldown = 0;
     }
 
@@ -134,7 +144,6 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         behaviours.add(itemTarget = new InvManipulationBehaviour(this, InterfaceProvider.oppositeOfBlockFacing()));
         behaviours.add(invVersionTracker = new VersionedInventoryTrackerBehaviour(this));
         behaviours.add(advancements = new AdvancementBehaviour(this, AllAdvancements.PACKAGER));
-        behaviours.add(computerBehaviour = ComputerCraftProxy.behaviour(this));
     }
 
     @Override
@@ -146,7 +155,8 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
     @Override
     public void invalidate() {
         super.invalidate();
-        computerBehaviour.removePeripheral();
+        if (computerBehaviour != null)
+            computerBehaviour.removePeripheral();
     }
 
     @Override
@@ -208,57 +218,80 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
     public InventorySummary getAvailableItems() {
         IFluidHandler fluidHandler = fluidTarget.getInventory();
 
+        Map<FluidTypeKey, Integer> scannedSnapshot = scanAvailableFluids(fluidHandler);
+        if (availableItems != null && scannedSnapshot.equals(availableFluidSnapshot))
+            return availableItems;
+
         InventorySummary availableItems = new InventorySummary();
-
-        if (fluidHandler != null) {
-            boolean isCreativeHandler = fluidHandler instanceof CreativeSmartFluidTank;
-            
-            List<FluidAccumulator> accumulators = new java.util.ArrayList<>();
-
-            for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
-                FluidStack fluid = fluidHandler.getFluidInTank(tank);
-                if (!fluid.isEmpty()) {
-                    FluidStack template = fluid.copyWithAmount(1);
-                    
-                    FluidAccumulator acc = null;
-                    for (FluidAccumulator existing : accumulators) {
-                        if (FluidStack.isSameFluidSameComponents(existing.template, template)) {
-                            acc = existing;
-                            break;
-                        }
-                    }
-                    
-                    if (acc == null) {
-                        acc = new FluidAccumulator(template, fluid.getAmount(), isCreativeHandler);
-                        accumulators.add(acc);
-                    } else {
-                        acc.amount += fluid.getAmount();
-                        acc.isCreative = acc.isCreative || isCreativeHandler;
-                    }
-                }
-            }
-
-            for (FluidAccumulator acc : accumulators) {
-                ItemStack fluidDisplayItem = createFluidDisplayItem(acc.template);
-                int displayAmount = acc.isCreative ? BigItemStack.INF : acc.amount;
-                availableItems.add(fluidDisplayItem, displayAmount);
-            }
+        for (Map.Entry<FluidTypeKey, Integer> entry : scannedSnapshot.entrySet()) {
+            availableItems.add(createFluidDisplayItem(entry.getKey().template()), entry.getValue());
         }
 
         submitNewArrivals(this.availableItems, availableItems);
+        availableFluidSnapshot = scannedSnapshot;
         this.availableItems = availableItems;
         return availableItems;
     }
 
-    private static class FluidAccumulator {
-        final FluidStack template;
-        int amount;
-        boolean isCreative;
+    private Map<FluidTypeKey, Integer> scanAvailableFluids(@Nullable IFluidHandler fluidHandler) {
+        if (fluidHandler == null)
+            return Map.of();
 
-        FluidAccumulator(FluidStack template, int amount, boolean isCreative) {
-            this.template = template;
-            this.amount = amount;
-            this.isCreative = isCreative;
+        boolean isCreativeHandler = fluidHandler instanceof CreativeSmartFluidTank;
+        int tankCount = safeGetTanks(fluidHandler);
+        if (tankCount == 0)
+            return Map.of();
+
+        Map<FluidTypeKey, Integer> scannedSnapshot = new LinkedHashMap<>();
+        for (int tank = 0; tank < tankCount; tank++) {
+            FluidStack fluid = safeGetFluidInTank(fluidHandler, tank);
+            if (fluid.isEmpty())
+                continue;
+
+            FluidTypeKey key = FluidTypeKey.of(fluid);
+            int amountToAdd = isCreativeHandler ? BigItemStack.INF : fluid.getAmount();
+            scannedSnapshot.merge(key, amountToAdd, FluidPackagerBlockEntity::mergeFluidAmounts);
+        }
+
+        return scannedSnapshot.isEmpty() ? Map.of() : scannedSnapshot;
+    }
+
+    private static int mergeFluidAmounts(int existingAmount, int addedAmount) {
+        if (existingAmount >= BigItemStack.INF || addedAmount >= BigItemStack.INF)
+            return BigItemStack.INF;
+        return existingAmount + addedAmount;
+    }
+
+    private record FluidTypeKey(FluidStack template) {
+        private static FluidTypeKey of(FluidStack stack) {
+            return new FluidTypeKey(stack.copyWithAmount(1));
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof FluidTypeKey other
+                && FluidStack.isSameFluidSameComponents(template, other.template);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(template.getFluid(), template.getComponentsPatch());
+        }
+    }
+
+    private static int safeGetTanks(IFluidHandler handler) {
+        try {
+            return handler.getTanks();
+        } catch (IllegalStateException e) {
+            return 0;
+        }
+    }
+
+    private static FluidStack safeGetFluidInTank(IFluidHandler handler, int tank) {
+        try {
+            return handler.getFluidInTank(tank);
+        } catch (IllegalStateException e) {
+            return FluidStack.EMPTY;
         }
     }
 
@@ -269,7 +302,7 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
     }
 
     private void submitNewArrivals(InventorySummary before, InventorySummary after) {
-        if (before == null || after.isEmpty())
+        if (after.isEmpty())
             return;
 
         Set<RequestPromiseQueue> promiseQueues = new HashSet<>();
@@ -307,6 +340,15 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
 
         if (promiseQueues.isEmpty())
             return;
+
+        if (before == null || before.isEmpty()) {
+            for (RequestPromiseQueue queue : promiseQueues) {
+                for (BigItemStack entry : after.getStacks()) {
+                    queue.itemEnteredSystem(entry.stack, entry.count);
+                }
+            }
+            return;
+        }
 
         for (BigItemStack entry : after.getStacks())
             before.add(entry.stack, -entry.count);
@@ -416,7 +458,7 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         if (fluidPackage.isEmpty())
             return;
 
-        computerBehaviour.prepareComputerEvent(new PackageEvent(fluidPackage, "package_created"));
+        sendComputerEvent(fluidPackage, "package_created");
 
         if (!signBasedAddress.isBlank()) {
             PackageItem.addAddress(fluidPackage, signBasedAddress);
@@ -427,15 +469,27 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         animationTicks = CYCLE;
 
         advancements.awardPlayer(AllAdvancements.PACKAGER);
+        awardFluidPackageCreatedAdvancement();
         triggerStockCheck();
         notifyUpdate();
+    }
+
+    private void awardFluidPackageCreatedAdvancement() {
+        if (level == null || level.isClientSide())
+            return;
+        List<ServerPlayer> players = level.getEntitiesOfClass(ServerPlayer.class, 
+            new AABB(worldPosition).inflate(16));
+        for (ServerPlayer player : players) {
+            AllTriggers.FLUID_PACKAGE_CREATED.trigger(player);
+        }
     }
 
     private FluidStack extractFluidFromTank(IFluidHandler handler, int maxAmount) {
         boolean isCreativeHandler = handler instanceof CreativeSmartFluidTank;
         
-        for (int tank = 0; tank < handler.getTanks(); tank++) {
-            FluidStack fluidInTank = handler.getFluidInTank(tank);
+        int tankCount = safeGetTanks(handler);
+        for (int tank = 0; tank < tankCount; tank++) {
+            FluidStack fluidInTank = safeGetFluidInTank(handler, tank);
             if (fluidInTank.isEmpty())
                 continue;
 
@@ -504,25 +558,37 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
 
         if (totalFluidAmount > 0) {
             int totalCapacity = 0;
-            for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
-                FluidStack tankFluid = fluidHandler.getFluidInTank(tank);
+            int tankCount = safeGetTanks(fluidHandler);
+            for (int tank = 0; tank < tankCount; tank++) {
+                FluidStack tankFluid = safeGetFluidInTank(fluidHandler, tank);
                 int tankCapacity = fluidHandler.getTankCapacity(tank);
                 totalCapacity += (tankCapacity - tankFluid.getAmount());
-
-                if (!tankFluid.isEmpty()) {
-                    for (ItemStack item : items) {
-                        FluidStack packageFluid = CompressedTankItem.getFluid(item);
-                        if (!packageFluid.isEmpty()) {
-                            if (!FluidStack.isSameFluidSameComponents(tankFluid, packageFluid)) {
-                                return false;
-                            }
-                        }
-                    }
-                }
             }
 
             if (totalCapacity < totalFluidAmount) {
                 return false;
+            }
+
+            for (ItemStack item : items) {
+                FluidStack packageFluid = CompressedTankItem.getFluid(item);
+                if (packageFluid.isEmpty())
+                    continue;
+
+                boolean canInsert = false;
+                for (int tank = 0; tank < tankCount; tank++) {
+                    FluidStack tankFluid = safeGetFluidInTank(fluidHandler, tank);
+                    if (tankFluid.isEmpty()) {
+                        canInsert = true;
+                        break;
+                    }
+                    if (FluidStack.isSameFluidSameComponents(tankFluid, packageFluid)) {
+                        canInsert = true;
+                        break;
+                    }
+                }
+                if (!canInsert) {
+                    return false;
+                }
             }
         }
 
@@ -538,7 +604,7 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
             }
         }
 
-        computerBehaviour.prepareComputerEvent(new PackageEvent(box, "package_received"));
+        sendComputerEvent(box, "package_received");
         previouslyUnwrapped = box;
         animationInward = true;
         animationTicks = CYCLE;
@@ -558,7 +624,7 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         boolean unpacked = toUse.unpack(level, target, targetState, facing, items, orderContext, simulate);
 
         if (unpacked && !simulate) {
-            computerBehaviour.prepareComputerEvent(new PackageEvent(box, "package_received"));
+            sendComputerEvent(box, "package_received");
             previouslyUnwrapped = box;
             animationInward = true;
             animationTicks = CYCLE;
@@ -576,7 +642,10 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
                 continue;
             signBasedAddress = address;
         }
-        if (computerBehaviour.hasAttachedComputer() && hasCustomComputerAddress) {
+        if (signBasedAddress.isBlank() && !clipboardAddress.isBlank()) {
+            signBasedAddress = clipboardAddress;
+        }
+        if (hasAttachedComputer() && hasCustomComputerAddress) {
             signBasedAddress = customComputerAddress;
         } else {
             hasCustomComputerAddress = false;
@@ -613,8 +682,10 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         animationInward = compound.getBoolean("AnimationInward");
         animationTicks = compound.getInt("AnimationTicks");
         signBasedAddress = compound.getString("SignAddress");
+        clipboardAddress = compound.getString("FluidLogisticsClipboardAddress");
         customComputerAddress = compound.getString("ComputerAddress");
         hasCustomComputerAddress = compound.getBoolean("HasComputerAddress");
+        manualOverrideLocked = compound.getBoolean("FluidLogisticsManualOverrideLocked");
         heldBox = ItemStack.parseOptional(registries, compound.getCompound("HeldBox"));
         previouslyUnwrapped = ItemStack.parseOptional(registries, compound.getCompound("InsertedBox"));
         if (clientPacket)
@@ -634,8 +705,10 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         compound.putBoolean("AnimationInward", animationInward);
         compound.putInt("AnimationTicks", animationTicks);
         compound.putString("SignAddress", signBasedAddress);
+        compound.putString("FluidLogisticsClipboardAddress", clipboardAddress);
         compound.putString("ComputerAddress", customComputerAddress);
         compound.putBoolean("HasComputerAddress", hasCustomComputerAddress);
+        compound.putBoolean("FluidLogisticsManualOverrideLocked", manualOverrideLocked);
         compound.put("HeldBox", heldBox.saveOptional(registries));
         compound.put("InsertedBox", previouslyUnwrapped.saveOptional(registries));
         if (clientPacket)
@@ -736,36 +809,12 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         if (requestedFluid.isEmpty())
             return null;
 
-        IFluidHandler fluidHandler = fluidTarget.getInventory();
-        if (fluidHandler == null)
-            return null;
-
-        boolean isCreativeHandler = fluidHandler instanceof CreativeSmartFluidTank;
-
-        if (isCreativeHandler) {
-            for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
-                FluidStack tankFluid = fluidHandler.getFluidInTank(tank);
-                if (!tankFluid.isEmpty() && FluidStack.isSameFluidSameComponents(tankFluid, requestedFluid)) {
-                    return net.createmod.catnip.data.Pair.of(this,
-                        com.simibubi.create.content.logistics.packager.PackagingRequest.create(
-                            stack, amount, address, linkIndex, finalLink, 0, orderId, context));
-                }
-            }
-            return null;
-        }
-
-        int availableAmount = 0;
-        for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
-            FluidStack tankFluid = fluidHandler.getFluidInTank(tank);
-            if (!tankFluid.isEmpty() && FluidStack.isSameFluidSameComponents(tankFluid, requestedFluid)) {
-                availableAmount += tankFluid.getAmount();
-            }
-        }
-
+        getAvailableItems();
+        int availableAmount = availableFluidSnapshot.getOrDefault(FluidTypeKey.of(requestedFluid), 0);
         if (availableAmount == 0)
             return null;
 
-        int toWithdraw = Math.min(amount, availableAmount);
+        int toWithdraw = availableAmount >= BigItemStack.INF ? amount : Math.min(amount, availableAmount);
         
         return net.createmod.catnip.data.Pair.of(this,
             com.simibubi.create.content.logistics.packager.PackagingRequest.create(
@@ -798,7 +847,6 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         }
 
         int remainingCount = nextRequest.getCount();
-        int totalFluidExtracted = 0;
         String fixedAddress = nextRequest.address();
         int fixedOrderId = nextRequest.orderId();
         int linkIndexInOrder = nextRequest.linkIndex();
@@ -821,14 +869,13 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
             return;
         }
 
-        computerBehaviour.prepareComputerEvent(new PackageEvent(fluidPackage, "package_created"));
+        sendComputerEvent(fluidPackage, "package_created");
 
         PackageItem.clearAddress(fluidPackage);
         if (fixedAddress != null)
             PackageItem.addAddress(fluidPackage, fixedAddress);
         
         int extractedAmount = extractedFluid.getAmount();
-        totalFluidExtracted += extractedAmount;
         nextRequest.subtract(extractedAmount);
 
         if (nextRequest.isEmpty()) {
@@ -849,15 +896,26 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         animationTicks = CYCLE;
 
         advancements.awardPlayer(AllAdvancements.PACKAGER);
+        awardFluidPackageCreatedAdvancement();
         triggerStockCheck();
         notifyUpdate();
+    }
+
+    private void sendComputerEvent(ItemStack itemStack, String eventName) {
+        if (computerBehaviour != null)
+            computerBehaviour.prepareComputerEvent(new PackageEvent(itemStack, eventName));
+    }
+
+    private boolean hasAttachedComputer() {
+        return computerBehaviour != null && computerBehaviour.hasAttachedComputer();
     }
 
     private FluidStack extractSpecificFluidFromTank(IFluidHandler handler, FluidStack targetFluid, int maxAmount) {
         boolean isCreativeHandler = handler instanceof CreativeSmartFluidTank;
         
-        for (int tank = 0; tank < handler.getTanks(); tank++) {
-            FluidStack fluidInTank = handler.getFluidInTank(tank);
+        int tankCount = safeGetTanks(handler);
+        for (int tank = 0; tank < tankCount; tank++) {
+            FluidStack fluidInTank = safeGetFluidInTank(handler, tank);
             if (fluidInTank.isEmpty())
                 continue;
             if (!FluidStack.isSameFluidSameComponents(fluidInTank, targetFluid))
@@ -879,6 +937,26 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
     @Override
     public void flashFluidLink() {
         flashLink();
+    }
+
+    @Override
+    public boolean fluidlogistics$isManualOverrideLocked() {
+        return manualOverrideLocked;
+    }
+
+    @Override
+    public void fluidlogistics$setManualOverrideLocked(boolean locked) {
+        manualOverrideLocked = locked;
+    }
+
+    @Override
+    public String fluidlogistics$getClipboardAddress() {
+        return clipboardAddress;
+    }
+
+    @Override
+    public void fluidlogistics$setClipboardAddress(String address) {
+        clipboardAddress = address == null ? "" : address;
     }
 
     @Override

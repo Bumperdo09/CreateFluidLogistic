@@ -1,4 +1,4 @@
-package com.yision.fluidlogistics.block;
+package com.yision.fluidlogistics.block.FluidPackager;
 
 import com.yision.fluidlogistics.item.FluidPackageItem;
 

@@ -1,6 +1,7 @@
-package com.yision.fluidlogistics.block;
+package com.yision.fluidlogistics.block.FluidPackager;
 
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllItems;
 import com.simibubi.create.AllSoundEvents;
 import com.yision.fluidlogistics.registry.AllBlockEntities;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -9,6 +10,7 @@ import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.block.WrenchableDirectionalBlock;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.inventory.InvManipulationBehaviour;
+import com.yision.fluidlogistics.util.IPackagerOverrideData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
@@ -30,7 +32,6 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.common.util.FakePlayer;
 
 public class FluidPackagerBlock extends WrenchableDirectionalBlock implements IBE<FluidPackagerBlockEntity>, IWrenchable {
 
@@ -53,14 +54,18 @@ public class FluidPackagerBlock extends WrenchableDirectionalBlock implements IB
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction preferredFacing = null;
+        Level level = context.getLevel();
 
         for (Direction face : context.getNearestLookingDirections()) {
-            BlockEntity be = context.getLevel()
-                    .getBlockEntity(context.getClickedPos().relative(face));
+            BlockPos adjacentPos = context.getClickedPos().relative(face);
+            BlockEntity be = level.getBlockEntity(adjacentPos);
             if (be instanceof FluidPackagerBlockEntity)
                 continue;
-            if (be != null && be.hasLevel() &&
-                    be.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, be.getBlockPos(), null) != null) {
+
+            var sidedHandler = level.getCapability(Capabilities.FluidHandler.BLOCK, adjacentPos, face.getOpposite());
+            var unsidedHandler = sidedHandler != null ? sidedHandler
+                : level.getCapability(Capabilities.FluidHandler.BLOCK, adjacentPos, null);
+            if (unsidedHandler != null) {
                 preferredFacing = face.getOpposite();
                 break;
             }
@@ -80,6 +85,8 @@ public class FluidPackagerBlock extends WrenchableDirectionalBlock implements IB
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                               Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (AllItems.WRENCH.isIn(stack))
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         if (AllBlocks.FACTORY_GAUGE.isIn(stack))
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         if (AllBlocks.STOCK_LINK.isIn(stack) && !(state.hasProperty(LINKED) && state.getValue(LINKED)))
@@ -138,6 +145,14 @@ public class FluidPackagerBlock extends WrenchableDirectionalBlock implements IB
                                 boolean isMoving) {
         if (worldIn.isClientSide)
             return;
+
+        BlockEntity blockEntity = worldIn.getBlockEntity(pos);
+        if (blockEntity instanceof IPackagerOverrideData data && data.fluidlogistics$isManualOverrideLocked()) {
+            InvManipulationBehaviour behaviour = BlockEntityBehaviour.get(worldIn, pos, InvManipulationBehaviour.TYPE);
+            if (behaviour != null)
+                behaviour.onNeighborChanged(fromPos);
+            return;
+        }
 
         InvManipulationBehaviour behaviour = BlockEntityBehaviour.get(worldIn, pos, InvManipulationBehaviour.TYPE);
         if (behaviour != null)
