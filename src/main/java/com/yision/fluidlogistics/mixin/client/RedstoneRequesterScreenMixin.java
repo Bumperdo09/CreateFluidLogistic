@@ -22,6 +22,7 @@ import com.simibubi.create.foundation.gui.menu.GhostItemSubmitPacket;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.yision.fluidlogistics.item.CompressedTankItem;
 import com.yision.fluidlogistics.render.FluidSlotRenderer;
+import com.yision.fluidlogistics.util.FluidAmountHelper;
 
 import net.createmod.catnip.data.Pair;
 import net.createmod.catnip.platform.CatnipServices;
@@ -120,22 +121,12 @@ public abstract class RedstoneRequesterScreenMixin extends AbstractSimiContainer
             
             if (slotIndex >= 0 && slotIndex < amounts.size()) {
                 int amount = amounts.get(slotIndex);
-                String amountText = formatFluidAmount(amount);
+                String amountText = FluidAmountHelper.format(amount);
                 graphics.renderItemDecorations(font, stack, x, y, amountText);
                 return;
             }
         }
         graphics.renderItemDecorations(font, stack, x, y, text);
-    }
-    
-    private String formatFluidAmount(int amount) {
-        if (amount >= 1000000) {
-            return (amount / 1000000) + "B";
-        } else if (amount >= 1000) {
-            return (amount / 1000) + "B";
-        } else {
-            return amount + "mB";
-        }
     }
 
     @Inject(method = "getTooltipFromContainerItem", at = @At("HEAD"), cancellable = true, remap = true)
@@ -148,7 +139,7 @@ public abstract class RedstoneRequesterScreenMixin extends AbstractSimiContainer
                     FluidStack fluid = CompressedTankItem.getFluid(ghostStack);
                     if (!fluid.isEmpty()) {
                         int amount = amounts.get(slotIndex);
-                        String amountText = formatFluidAmount(amount);
+                        String amountText = FluidAmountHelper.format(amount);
                         List<Component> tooltip = new ArrayList<>();
                         tooltip.add(CreateLang.translate("gui.factory_panel.send_item", 
                                 CreateLang.text(fluid.getHoverName().getString())
@@ -183,7 +174,7 @@ public abstract class RedstoneRequesterScreenMixin extends AbstractSimiContainer
                 if (itemStack.getItem() instanceof CompressedTankItem && CompressedTankItem.isVirtual(itemStack)) {
                     int currentAmount = amounts.get(i);
                     int delta = (int) Math.signum(scrollY) * (hasShiftDown() ? 10000 : 1000);
-                    int newAmount = Math.max(1, Math.min(Integer.MAX_VALUE, currentAmount + delta));
+                    int newAmount = Math.max(1000, Math.min(Integer.MAX_VALUE, currentAmount + delta));
                     amounts.set(i, newAmount);
                     cir.setReturnValue(true);
                     return;
