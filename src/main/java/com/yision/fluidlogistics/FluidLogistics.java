@@ -1,18 +1,35 @@
 package com.yision.fluidlogistics;
 
 import com.mojang.logging.LogUtils;
-import com.simibubi.create.api.packager.unpacking.UnpackingHandler;
+import com.simibubi.create.content.kinetics.mechanicalArm.ArmInteractionPointType;
 import com.simibubi.create.foundation.data.CreateRegistrate;
+import com.simibubi.create.foundation.item.ItemDescription;
+import net.createmod.catnip.lang.FontHelper;
 import com.yision.fluidlogistics.config.Config;
-import com.yision.fluidlogistics.block.FluidPackagerBlockEntity;
-import com.yision.fluidlogistics.handler.FluidPackageUnpackingHandler;
+import com.yision.fluidlogistics.block.FluidPackager.FluidPackagerBlockEntity;
+import com.yision.fluidlogistics.block.FluidTransporter.FluidTransporterBlockEntity;
+import com.yision.fluidlogistics.block.HorizontalMultiFluidTank.HorizontalMultiFluidTankBlockEntity;
+import com.yision.fluidlogistics.block.MultiFluidAccessPort.MultiFluidAccessPortBlockEntity;
+import com.yision.fluidlogistics.block.MultiFluidTank.MultiFluidTankBlockEntity;
+import com.yision.fluidlogistics.advancement.AllTriggers;
 import com.yision.fluidlogistics.network.FluidLogisticsPackets;
+import com.yision.fluidlogistics.registry.FluidLogisticsArmInteractionPointTypes;
 import com.yision.fluidlogistics.registry.AllBlockEntities;
 import com.yision.fluidlogistics.registry.AllBlocks;
+import com.simibubi.create.content.logistics.box.PackageItem;
+import com.yision.fluidlogistics.item.CompressedTankItem;
 import com.yision.fluidlogistics.registry.AllDataComponents;
 import com.yision.fluidlogistics.registry.AllItems;
+import com.yision.fluidlogistics.registry.AllMenuTypes;
+import com.yision.fluidlogistics.registry.AllConditionCodecs;
+import com.yision.fluidlogistics.config.FeatureToggle;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -20,57 +37,92 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.registries.RegisterEvent;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.BuiltInRegistries;
+import java.util.Objects;
 import org.slf4j.Logger;
 
 @Mod(FluidLogistics.MODID)
 public class FluidLogistics {
     public static final String MODID = "fluidlogistics";
     public static final Logger LOGGER = LogUtils.getLogger();
+    private static final ResourceKey<net.minecraft.world.item.CreativeModeTab> FLUID_LOGISTICS_TAB =
+            ResourceKey.create(Registries.CREATIVE_MODE_TAB, asResource("fluidlogistics_tab"));
 
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID)
-            .defaultCreativeTab("fluidlogistics_tab", b -> b.icon(() -> AllItems.RARE_FLUID_PACKAGE.asStack()))
+            .setTooltipModifierFactory(item ->
+                    new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE)
+            )
+            .defaultCreativeTab("fluidlogistics_tab", b -> b.icon(() -> createWaterFluidPackage(50000)))
             .build();
 
     public FluidLogistics(IEventBus modEventBus, ModContainer modContainer) {
         REGISTRATE.registerEventListeners(modEventBus);
 
+        AllConditionCodecs.register(modEventBus);
         AllDataComponents.register(modEventBus);
         AllBlocks.register();
         AllBlockEntities.register();
         AllItems.register();
+        AllMenuTypes.register();
+        FluidLogisticsArmInteractionPointTypes.ARM_INTERACTION_POINT_TYPES.register(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerCapabilities);
+        modEventBus.addListener(this::onRegister);
+        modEventBus.addListener(this::hideDisabledItems);
 
         NeoForge.EVENT_BUS.register(this);
-
         LOGGER.info("FluidLogistics initialized!");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             FluidLogisticsPackets.register();
-            registerUnpackingHandlers();
-            LOGGER.info("FluidLogistics unpacking handlers registered!");
+            ArmInteractionPointType.init();
+            com.yision.fluidlogistics.registry.AllMountedStorageTypes.register();
+            LOGGER.info("FluidLogistics mounted storage registered!");
         });
     }
 
-    private void registerCapabilities(final RegisterCapabilitiesEvent event) {
-        FluidPackagerBlockEntity.registerCapabilities(event);
+    private void onRegister(final RegisterEvent event) {
+        if (event.getRegistry() == BuiltInRegistries.TRIGGER_TYPES) {
+            AllTriggers.register();
+        }
     }
 
-    private void registerUnpackingHandlers() {
-        Block fluidTank = com.simibubi.create.AllBlocks.FLUID_TANK.get();
-        Block creativeFluidTank = com.simibubi.create.AllBlocks.CREATIVE_FLUID_TANK.get();
-        
-        if (fluidTank != null) {
-            UnpackingHandler.REGISTRY.register(fluidTank, FluidPackageUnpackingHandler.INSTANCE);
+    private void registerCapabilities(final RegisterCapabilitiesEvent event) {
+        FluidTransporterBlockEntity.registerCapabilities(event);
+        FluidPackagerBlockEntity.registerCapabilities(event);
+        MultiFluidTankBlockEntity.registerCapabilities(event);
+        HorizontalMultiFluidTankBlockEntity.registerCapabilities(event);
+        MultiFluidAccessPortBlockEntity.registerCapabilities(event);
+    }
+
+    private void hideDisabledItems(final BuildCreativeModeTabContentsEvent event) {
+        if (FeatureToggle.isEnabled(FeatureToggle.FLUID_TRANSPORTER)) {
+            return;
         }
-        if (creativeFluidTank != null) {
-            UnpackingHandler.REGISTRY.register(creativeFluidTank, FluidPackageUnpackingHandler.INSTANCE);
+        if (!Objects.equals(event.getTabKey(), FLUID_LOGISTICS_TAB) && !Objects.equals(event.getTabKey(), CreativeModeTabs.SEARCH)) {
+            return;
+        }
+
+        ItemStack hiddenItem = event.getSearchEntries().stream()
+                .filter(stack -> stack.getItem() == AllBlocks.FLUID_TRANSPORTER.asItem())
+                .findFirst()
+                .orElseGet(() -> event.getParentEntries().stream()
+                        .filter(stack -> stack.getItem() == AllBlocks.FLUID_TRANSPORTER.asItem())
+                        .findFirst()
+                        .orElse(ItemStack.EMPTY));
+
+        if (!hiddenItem.isEmpty()) {
+            event.remove(hiddenItem, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
         }
     }
 
@@ -81,5 +133,16 @@ public class FluidLogistics {
     @net.neoforged.bus.api.SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("FluidLogistics server starting!");
+    }
+
+    private static ItemStack createWaterFluidPackage(int amount) {
+        ItemStack packageStack = new ItemStack(AllItems.RARE_FLUID_PACKAGE.get());
+        ItemStackHandler contents = new ItemStackHandler(PackageItem.SLOTS);
+        ItemStack tankStack = new ItemStack(AllItems.COMPRESSED_STORAGE_TANK.get());
+        CompressedTankItem.setFluid(tankStack, new FluidStack(Fluids.WATER, amount));
+        contents.setStackInSlot(0, tankStack);
+        packageStack.set(com.simibubi.create.AllDataComponents.PACKAGE_CONTENTS,
+                com.simibubi.create.foundation.item.ItemHelper.containerContentsFromHandler(contents));
+        return packageStack;
     }
 }

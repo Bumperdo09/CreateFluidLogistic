@@ -1,0 +1,22 @@
+package com.yision.fluidlogistics.mixin.kinetics;
+
+import com.simibubi.create.content.kinetics.belt.behaviour.BeltProcessingBehaviour;
+import com.yision.fluidlogistics.block.SmartFaucet.SmartFaucetBlock;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(BeltProcessingBehaviour.class)
+public class BeltProcessingBehaviourMixin {
+
+    @Inject(method = "isBlocked", at = @At("HEAD"), cancellable = true)
+    private static void fluidlogistics$allowSmartFaucet(BlockGetter world, BlockPos processingSpace,
+        CallbackInfoReturnable<Boolean> cir) {
+        if (world.getBlockState(processingSpace.above()).getBlock() instanceof SmartFaucetBlock) {
+            cir.setReturnValue(false);
+        }
+    }
+}
