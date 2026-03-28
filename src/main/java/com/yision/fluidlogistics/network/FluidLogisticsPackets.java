@@ -11,7 +11,19 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 public enum FluidLogisticsPackets implements BasePacketPayload.PacketTypeProvider {
-    FACTORY_PANEL_SET_FLUID_FILTER(FactoryPanelSetFluidFilterPacket.class, FactoryPanelSetFluidFilterPacket.STREAM_CODEC);
+    CLIPBOARD_SET_ADDRESS(ClipboardSetAddressPacket.class, ClipboardSetAddressPacket.STREAM_CODEC),
+    FACTORY_PANEL_SET_FLUID_FILTER(FactoryPanelSetFluidFilterPacket.class, FactoryPanelSetFluidFilterPacket.STREAM_CODEC),
+    HAND_POINTER_FROGPORT_CONNECTION(HandPointerFrogportConnectionPacket.class, HandPointerFrogportConnectionPacket.STREAM_CODEC),
+    HAND_POINTER_MAILBOX_STATION_CONNECTION(HandPointerMailboxStationConnectionPacket.class, HandPointerMailboxStationConnectionPacket.STREAM_CODEC),
+    HAND_POINTER_LOGISTICS_NETWORK(HandPointerLogisticsNetworkPacket.class, HandPointerLogisticsNetworkPacket.STREAM_CODEC),
+    HAND_POINTER_CLEAR_CLIPBOARD_ADDRESS(HandPointerClearClipboardAddressPacket.class, HandPointerClearClipboardAddressPacket.STREAM_CODEC),
+    HAND_POINTER_PACKAGER_TOGGLE(HandPointerPackagerTogglePacket.class, HandPointerPackagerTogglePacket.STREAM_CODEC),
+    HAND_POINTER_MODE_ENTERED(HandPointerModeEnteredPacket.class, HandPointerModeEnteredPacket.STREAM_CODEC),
+    PORTABLE_STOCK_TICKER_STOCK_REQUEST(PortableStockTickerStockRequestPacket.class, PortableStockTickerStockRequestPacket.STREAM_CODEC),
+    PORTABLE_STOCK_TICKER_STOCK_RESPONSE(PortableStockTickerStockResponsePacket.class, PortableStockTickerStockResponsePacket.STREAM_CODEC),
+    PORTABLE_STOCK_TICKER_ORDER_REQUEST(PortableStockTickerOrderRequestPacket.class, PortableStockTickerOrderRequestPacket.STREAM_CODEC),
+    PORTABLE_STOCK_TICKER_SAVE_ADDRESS(PortableStockTickerSaveAddressPacket.class, PortableStockTickerSaveAddressPacket.STREAM_CODEC),
+    PORTABLE_STOCK_TICKER_HIDDEN_CATEGORIES(PortableStockTickerHiddenCategoriesPacket.class, PortableStockTickerHiddenCategoriesPacket.STREAM_CODEC);
 
     private final CatnipPacketRegistry.PacketType<?> type;
 

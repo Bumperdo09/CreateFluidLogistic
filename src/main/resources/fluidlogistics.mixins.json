@@ -4,6 +4,7 @@
     "plugin": "com.yision.fluidlogistics.mixin.FluidLogisticsMixinPlugin",
     "compatibilityLevel": "JAVA_21",
     "mixins": [
+        "accessor.StockTickerBlockEntityAccessor",
         "kinetics.BeltInventoryMixin",
         "kinetics.BeltProcessingBehaviourMixin",
         "logistics.DefaultUnpackingHandlerMixin",
@@ -30,6 +31,7 @@
         "accessor.StockKeeperRequestScreenAccessor",
         "client.ChainConveyorRendererMixin",
         "client.ChainConveyorVisualMixin",
+        "client.CraftableBigItemStackMixin",
         "client.FactoryPanelBehaviourClientMixin",
         "client.FactoryPanelScreenMixin",
         "client.FactoryPanelSetItemScreenMixin",

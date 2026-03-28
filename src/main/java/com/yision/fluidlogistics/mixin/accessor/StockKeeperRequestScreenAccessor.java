@@ -1,4 +1,4 @@
-package com.yision.fluidlogistics.mixin.client;
+package com.yision.fluidlogistics.mixin.accessor;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;

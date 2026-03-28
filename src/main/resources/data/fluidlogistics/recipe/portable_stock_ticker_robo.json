@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "create_mobile_packages:portable_stock_ticker"
+    },
+    {
+      "item": "create:copper_casing"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "fluidlogistics:portable_stock_ticker"
+  }
+}

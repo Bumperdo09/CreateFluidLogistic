@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "create:clipboard"
+    },
+    {
+      "item": "create:redstone_link"
+    },
+    {
+      "item": "create:stock_ticker"
+    },
+    {
+      "item": "create:copper_casing"
+    }
+  ],
+  "result": {
+    "id": "fluidlogistics:portable_stock_ticker",
+    "count": 1
+  }
+}
