@@ -64,6 +64,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
     private static final String TAG_PROCESSING_TARGET = "ProcessingTarget";
     private static final String TAG_TRANSFER_COOLDOWN = "TransferCooldown";
     private static final String TAG_DRIP_TICK_COUNTER = "DripTickCounter";
+    private static final String TAG_DRIP_CYCLE_INDEX = "DripCycleIndex";
     private static final InfiniteWaterSourceHandler INFINITE_WATER_SOURCE = new InfiniteWaterSourceHandler();
     private static Field depotOutputBufferField;
 
@@ -76,6 +77,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
     private int processingTicks;
     private int transferCooldown;
     private int dripTickCounter;
+    private int dripCycleIndex;
     private boolean isFillingItem;
     private boolean shouldDrip;
     private @Nullable Direction sourceDirection;
@@ -177,7 +179,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
             return;
         }
 
-        FluidStack dripPreview = previewFluid(sourceHandler, 1);
+        List<FluidStack> dripPreview = previewDripFluids(sourceHandler);
         if (dripPreview.isEmpty()) {
             clearFlowVisuals();
             return;
@@ -328,6 +330,9 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         if (handler.blockEntity.isVirtual()) {
             return PASS;
         }
+        if (!isDirectlyAbove(handler)) {
+            return PASS;
+        }
         if (!getBlockState().getValue(SmartFaucetBlock.OPEN)) {
             return PASS;
         }
@@ -348,6 +353,13 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
 
     private BeltProcessingBehaviour.ProcessingResult whenBeltItemHeld(TransportedItemStack transported,
         TransportedItemStackHandlerBehaviour handler) {
+        if (!isDirectlyAbove(handler)) {
+            if (processingTarget == ProcessingTarget.BELT) {
+                cancelItemFilling();
+            }
+            return PASS;
+        }
+
         if (processingTarget == ProcessingTarget.DEPOT) {
             return HOLD;
         }
@@ -379,6 +391,10 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         }
 
         return startBeltFilling(fillContext, transported.stack) ? HOLD : PASS;
+    }
+
+    private boolean isDirectlyAbove(TransportedItemStackHandlerBehaviour handler) {
+        return handler.blockEntity != null && handler.blockEntity.getBlockPos().above().equals(worldPosition);
     }
 
     private boolean validateItemStillPresent() {
@@ -611,7 +627,6 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         if (!(level instanceof ServerLevel serverLevel) || dripFluid.isEmpty()) {
             return;
         }
-
         ParticleOptions fluidParticle = FluidFX.getDrippingParticle(dripFluid);
         Vec3 spoutPos = Vec3.atCenterOf(worldPosition).add(0, -0.3, 0);
         serverLevel.sendParticles(fluidParticle, spoutPos.x, spoutPos.y - 0.02, spoutPos.z, 1, 0.0, 0.0, 0.0, 0.0);
@@ -642,9 +657,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
     private void clearFlowVisuals() {
         if (!renderingFluid.isEmpty() || shouldDrip) {
             renderingFluid = FluidStack.EMPTY;
-            dripFluid = FluidStack.EMPTY;
-            shouldDrip = false;
-            dripTickCounter = 0;
+            clearDripState();
             notifyUpdate();
         }
     }
@@ -713,6 +726,38 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         return FluidStack.EMPTY;
     }
 
+    private List<FluidStack> previewDripFluids(IFluidHandler sourceHandler) {
+        List<FluidStack> dripFluids = new ArrayList<>();
+        for (int tank = 0; tank < sourceHandler.getTanks(); tank++) {
+            FluidStack candidate = sourceHandler.getFluidInTank(tank);
+            if (candidate.isEmpty() || filtering != null && !filtering.test(candidate)) {
+                continue;
+            }
+
+            FluidStack preview = candidate.copyWithAmount(Math.min(candidate.getAmount(), DRIP_AMOUNT));
+            boolean duplicate = false;
+            for (FluidStack existing : dripFluids) {
+                if (FluidStack.isSameFluidSameComponents(existing, preview)) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                dripFluids.add(preview);
+            }
+        }
+
+        if (!dripFluids.isEmpty()) {
+            return dripFluids;
+        }
+
+        FluidStack drained = sourceHandler.drain(DRIP_AMOUNT, FluidAction.SIMULATE);
+        if (!drained.isEmpty() && (filtering == null || filtering.test(drained))) {
+            dripFluids.add(drained.copyWithAmount(Math.min(drained.getAmount(), DRIP_AMOUNT)));
+        }
+        return dripFluids;
+    }
+
     @Override
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
@@ -728,6 +773,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         tag.putInt(TAG_PROCESSING_TARGET, processingTarget.ordinal());
         tag.putInt(TAG_TRANSFER_COOLDOWN, transferCooldown);
         tag.putInt(TAG_DRIP_TICK_COUNTER, dripTickCounter);
+        tag.putInt(TAG_DRIP_CYCLE_INDEX, dripCycleIndex);
     }
 
     @Override
@@ -745,6 +791,7 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         processingTarget = ProcessingTarget.fromOrdinal(tag.getInt(TAG_PROCESSING_TARGET));
         transferCooldown = tag.getInt(TAG_TRANSFER_COOLDOWN);
         dripTickCounter = tag.getInt(TAG_DRIP_TICK_COUNTER);
+        dripCycleIndex = tag.getInt(TAG_DRIP_CYCLE_INDEX);
     }
 
     private boolean isOpen() {
@@ -804,24 +851,64 @@ public class SmartFaucetBlockEntity extends SmartBlockEntity {
         }
         dripTickCounter = 0;
         spawnDripParticle();
+        advanceDripFluid();
     }
 
-    private boolean applyDripPreview(FluidStack dripPreview) {
-        FluidStack nextDripFluid = dripPreview.copyWithAmount(Math.min(dripPreview.getAmount(), DRIP_AMOUNT));
-        boolean fluidChanged = !FluidStack.isSameFluidSameComponents(dripFluid, nextDripFluid);
-        boolean stateChanged = !shouldDrip || fluidChanged;
-        dripFluid = nextDripFluid;
+    private boolean applyDripPreview(List<FluidStack> dripPreview) {
+        boolean stateChanged = !shouldDrip;
         shouldDrip = true;
-        if (fluidChanged) {
+        if (!containsFluid(dripPreview, dripFluid)) {
+            int index = Math.floorMod(dripCycleIndex, dripPreview.size());
+            FluidStack nextDripFluid = dripPreview.get(index).copyWithAmount(Math.min(dripPreview.get(index).getAmount(), DRIP_AMOUNT));
+            boolean fluidChanged = !FluidStack.isSameFluidSameComponents(dripFluid, nextDripFluid);
+            dripFluid = nextDripFluid;
+            stateChanged |= fluidChanged;
             dripTickCounter = DRIP_INTERVAL - 1;
         }
         return stateChanged;
     }
 
+    private void advanceDripFluid() {
+        Direction facing = getBlockState().getValue(SmartFaucetBlock.FACING);
+        IFluidHandler sourceHandler = getSourceHandler(worldPosition.relative(facing.getOpposite()), facing);
+        if (sourceHandler == null) {
+            clearDripState();
+            return;
+        }
+
+        List<FluidStack> dripPreview = previewDripFluids(sourceHandler);
+        if (dripPreview.isEmpty()) {
+            clearDripState();
+            return;
+        }
+
+        int currentIndex = indexOfFluid(dripPreview, dripFluid);
+        int nextIndex = currentIndex >= 0 ? (currentIndex + 1) % dripPreview.size() : Math.floorMod(dripCycleIndex, dripPreview.size());
+        dripCycleIndex = nextIndex;
+        dripFluid = dripPreview.get(nextIndex).copyWithAmount(Math.min(dripPreview.get(nextIndex).getAmount(), DRIP_AMOUNT));
+    }
+
     private void clearDripState() {
         shouldDrip = false;
         dripTickCounter = 0;
+        dripCycleIndex = 0;
         dripFluid = FluidStack.EMPTY;
+    }
+
+    private boolean containsFluid(List<FluidStack> fluids, FluidStack target) {
+        return indexOfFluid(fluids, target) != -1;
+    }
+
+    private int indexOfFluid(List<FluidStack> fluids, FluidStack target) {
+        if (target.isEmpty()) {
+            return -1;
+        }
+        for (int index = 0; index < fluids.size(); index++) {
+            if (FluidStack.isSameFluidSameComponents(fluids.get(index), target)) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private boolean hasFluidCapability(BlockPos pos, @Nullable Direction side) {

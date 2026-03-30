@@ -22,6 +22,8 @@
   "item.fluidlogistics.hand_pointer": "指读棒",
   "item.fluidlogistics.portable_stock_ticker": "便携仓库管理器",
   "item.fluidlogistics.portable_stock_ticker.not_linked": "未连接到物流网络",
+  "key.categories.fluidlogistics": "Fluid Logistics",
+  "key.fluidlogistics.open_portable_stock_ticker": "打开便携仓库管理器",
   "item.fluidlogistics.hand_pointer.tooltip.summary": "用于配置机械元件交互点的多功能工具",
   "item.fluidlogistics.portable_stock_ticker.tooltip.summary": "可随身携带的仓库管理器，可从已绑定的物流网络请求物品和流体",
   "item.fluidlogistics.portable_stock_ticker.tooltip.condition1": "潜行右键仓储链路站或仓库管理器时",

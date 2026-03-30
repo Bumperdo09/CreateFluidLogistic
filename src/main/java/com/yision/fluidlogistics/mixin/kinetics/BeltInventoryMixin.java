@@ -23,20 +23,22 @@ public class BeltInventoryMixin {
     @Inject(method = "getBeltProcessingAtSegment", at = @At("RETURN"), cancellable = true)
     private void fluidlogistics$findSmartFaucetOneBlockAbove(int segment,
         CallbackInfoReturnable<BeltProcessingBehaviour> cir) {
+        BlockPos beltPos = BeltHelper.getPositionForOffset(belt, segment);
+        BlockPos oneBlockAbove = beltPos.above();
+        if (belt.getLevel().getBlockState(oneBlockAbove).getBlock() instanceof SmartFaucetBlock) {
+            BeltProcessingBehaviour behaviour =
+                BlockEntityBehaviour.get(belt.getLevel(), oneBlockAbove, BeltProcessingBehaviour.TYPE);
+            cir.setReturnValue(behaviour);
+            return;
+        }
+
+        if (belt.getLevel().getBlockState(beltPos.above(2)).getBlock() instanceof SmartFaucetBlock) {
+            cir.setReturnValue(null);
+            return;
+        }
+
         if (cir.getReturnValue() != null) {
             return;
-        }
-
-        BlockPos beltPos = BeltHelper.getPositionForOffset(belt, segment);
-        BlockPos processorPos = beltPos.above();
-        if (!(belt.getLevel().getBlockState(processorPos).getBlock() instanceof SmartFaucetBlock)) {
-            return;
-        }
-
-        BeltProcessingBehaviour behaviour =
-            BlockEntityBehaviour.get(belt.getLevel(), processorPos, BeltProcessingBehaviour.TYPE);
-        if (behaviour != null) {
-            cir.setReturnValue(behaviour);
         }
     }
 }

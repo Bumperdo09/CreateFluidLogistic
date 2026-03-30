@@ -22,6 +22,8 @@
   "item.fluidlogistics.hand_pointer": "Hand Pointer",
   "item.fluidlogistics.portable_stock_ticker": "Portable Stock Ticker",
   "item.fluidlogistics.portable_stock_ticker.not_linked": "Not linked to a logistics network",
+  "key.categories.fluidlogistics": "Fluid Logistics",
+  "key.fluidlogistics.open_portable_stock_ticker": "Open Portable Stock Ticker",
   "item.fluidlogistics.hand_pointer.tooltip.summary": "A versatile tool for configuring interaction points of mechanical components",
   "item.fluidlogistics.portable_stock_ticker.tooltip.summary": "A portable warehouse manager that can request items and fluids from a linked logistics network",
   "item.fluidlogistics.portable_stock_ticker.tooltip.condition1": "When shift-right-clicking a Stock Link or Stock Ticker",

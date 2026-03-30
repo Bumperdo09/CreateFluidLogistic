@@ -104,6 +104,11 @@ public class SmartFaucetBlock extends HorizontalDirectionalBlock implements IBE<
 
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        if (!hasSourceForFacing(level, pos, state.getValue(FACING))) {
+            level.destroyBlock(pos, true);
+            return;
+        }
+
         boolean powered = level.hasNeighborSignal(pos);
         if (state.getValue(POWERED) == powered) {
             return;
@@ -290,7 +295,7 @@ public class SmartFaucetBlock extends HorizontalDirectionalBlock implements IBE<
         shape = Shapes.or(shape, rotatedBox(facing, 5, 12, 7, 11, 13, 13));
         shape = Shapes.or(shape, rotatedBox(facing, 7, 10, 9, 9, 12, 11));
         shape = Shapes.or(shape, rotatedBox(facing, 6, 4, 6, 10, 6, 10));
-        shape = Shapes.or(shape, rotatedBox(facing, 3, 3, 15, 13, 12.9, 17));
+        shape = Shapes.or(shape, rotatedBox(facing, 3, 3, 15, 13, 12.9, 16));
         return shape;
     }
 
