@@ -8,6 +8,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import com.simibubi.create.content.logistics.redstoneRequester.RedstoneRequesterScreen;
 import com.simibubi.create.foundation.gui.menu.GhostItemSubmitPacket;
 import com.yision.fluidlogistics.item.CompressedTankItem;
+import com.yision.fluidlogistics.mixin.accessor.RedstoneRequesterScreenAccessor;
 
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -79,6 +80,8 @@ public class RedstoneRequesterFluidGhostHandler
                 CompressedTankItem.setFluidVirtual(virtualTank, fluidStack.copyWithAmount(1));
                 
                 gui.getMenu().ghostInventory.setStackInSlot(slotIndex, virtualTank);
+                
+                ((RedstoneRequesterScreenAccessor) gui).getAmounts().set(slotIndex, 1000);
 
                 CatnipServices.NETWORK.sendToServer(new GhostItemSubmitPacket(virtualTank, slotIndex));
             }
