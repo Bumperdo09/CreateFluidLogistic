@@ -1,10 +1,13 @@
 package com.yision.fluidlogistics.registry;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import com.yision.fluidlogistics.FluidLogistics;
 
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 
 public class AllPartialModels {
@@ -12,6 +15,7 @@ public class AllPartialModels {
     public static final PartialModel FLUID_PACKAGER_TRAY = block("fluid_packager/tray");
     public static final PartialModel FLUID_PACKAGER_HATCH_OPEN = block("fluid_packager/hatch_open");
     public static final PartialModel FLUID_PACKAGER_HATCH_CLOSED = block("fluid_packager/hatch_closed");
+    public static final Map<Direction, PartialModel> SMART_FAUCET_SOURCE_INTERFACE = new EnumMap<>(Direction.class);
 
     public static final PartialModel FLUID_PACKAGE = item("rare_fluid_package");
     public static final PartialModel FLUID_PACKAGE_RIGGING = rigging("12x10");
@@ -19,6 +23,13 @@ public class AllPartialModels {
     private static final ResourceLocation FLUID_PACKAGE_ID = ResourceLocation.fromNamespaceAndPath(FluidLogistics.MODID, "rare_fluid_package");
 
     private static boolean registered = false;
+
+    static {
+        SMART_FAUCET_SOURCE_INTERFACE.put(Direction.NORTH, block("smart_faucet/source_interface/north"));
+        SMART_FAUCET_SOURCE_INTERFACE.put(Direction.SOUTH, block("smart_faucet/source_interface/south"));
+        SMART_FAUCET_SOURCE_INTERFACE.put(Direction.EAST, block("smart_faucet/source_interface/east"));
+        SMART_FAUCET_SOURCE_INTERFACE.put(Direction.WEST, block("smart_faucet/source_interface/west"));
+    }
 
     private static PartialModel block(String path) {
         return PartialModel.of(ResourceLocation.fromNamespaceAndPath(FluidLogistics.MODID, "block/" + path));
@@ -37,7 +48,11 @@ public class AllPartialModels {
                 FLUID_PACKAGER_TRAY.modelLocation(),
                 FLUID_PACKAGER_HATCH_OPEN.modelLocation(),
                 FLUID_PACKAGER_HATCH_CLOSED.modelLocation(),
-                FLUID_PACKAGE.modelLocation()
+                FLUID_PACKAGE.modelLocation(),
+                SMART_FAUCET_SOURCE_INTERFACE.get(Direction.NORTH).modelLocation(),
+                SMART_FAUCET_SOURCE_INTERFACE.get(Direction.SOUTH).modelLocation(),
+                SMART_FAUCET_SOURCE_INTERFACE.get(Direction.EAST).modelLocation(),
+                SMART_FAUCET_SOURCE_INTERFACE.get(Direction.WEST).modelLocation()
         );
     }
 

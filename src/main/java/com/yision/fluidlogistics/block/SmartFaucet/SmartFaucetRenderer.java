@@ -3,9 +3,9 @@ package com.yision.fluidlogistics.block.SmartFaucet;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import com.simibubi.create.AllPartialModels;
 import com.simibubi.create.content.fluids.FluidTransportBehaviour.AttachmentTypes.ComponentPartials;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
+import com.yision.fluidlogistics.registry.AllPartialModels;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.createmod.catnip.render.CachedBuffers;
 import net.createmod.catnip.render.SuperByteBuffer;
@@ -87,7 +87,12 @@ public class SmartFaucetRenderer extends SmartBlockEntityRenderer<SmartFaucetBlo
 
     private void renderAttachment(SmartFaucetBlockEntity be, PoseStack ms, MultiBufferSource buffer, int light,
         Direction direction, ComponentPartials partialType) {
-        PartialModel partial = AllPartialModels.PIPE_ATTACHMENTS.get(partialType).get(direction);
+        PartialModel partial = partialType == ComponentPartials.DRAIN
+            ? AllPartialModels.SMART_FAUCET_SOURCE_INTERFACE.get(direction)
+            : null;
+        if (partial == null) {
+            return;
+        }
         SuperByteBuffer attachment = CachedBuffers.partial(partial, be.getBlockState());
         attachment.light(light).renderInto(ms, buffer.getBuffer(RenderType.solid()));
     }
