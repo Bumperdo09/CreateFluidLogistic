@@ -78,12 +78,30 @@ public final class SmartFaucetFilling {
 
         if (fillingRecipe != null) {
             List<ItemStack> results = fillingRecipe.value().rollResults(level.random);
+            ItemStack result = results.isEmpty() ? ItemStack.EMPTY : preserveInputComponents(stack, results.get(0));
             availableFluid.shrink(requiredAmount);
             stack.shrink(1);
-            return results.isEmpty() ? ItemStack.EMPTY : results.get(0);
+            return result;
         }
 
         return GenericItemFilling.fillItem(level, requiredAmount, stack, availableFluid);
+    }
+
+    private static ItemStack preserveInputComponents(ItemStack input, ItemStack result) {
+        if (result.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack output = result.copy();
+        if (output.getItem() != input.getItem()) {
+            return output;
+        }
+
+        ItemStack preserved = input.copyWithCount(output.getCount());
+        if (!output.isComponentsPatchEmpty()) {
+            preserved.applyComponents(output.getComponentsPatch());
+        }
+        return preserved;
     }
 
     private static Predicate<RecipeHolder<FillingRecipe>> matchItemAndFluid(Level level, FluidStack availableFluid,
