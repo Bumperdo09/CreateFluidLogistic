@@ -11,6 +11,7 @@ import com.yision.fluidlogistics.item.PortableStockTickerItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
+import net.neoforged.neoforge.common.Tags.Items;
 
 import static com.yision.fluidlogistics.FluidLogistics.REGISTRATE;
 
@@ -34,6 +35,7 @@ public class AllItems {
     public static final ItemEntry<HandPointerItem> HAND_POINTER = REGISTRATE
             .item("hand_pointer", HandPointerItem::new)
             .properties(p -> p.stacksTo(1))
+            .tag(Items.TOOLS)
             .model(AssetLookup.existingItemModel())
             .lang("Hand Pointer")
             .register();
