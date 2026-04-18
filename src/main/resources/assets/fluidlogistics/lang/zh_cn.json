@@ -87,6 +87,8 @@
   "fluidlogistics.configuration.items": "物品列表",
   "fluidlogistics.configuration.fluidTransporterEnabled": "流体传输器",
   "fluidlogistics.configuration.fluidTransporterEnabled.tooltip": "是否启用流体传输器",
+  "fluidlogistics.configuration.basinCapacityExpansionEnabled": "工作盆扩容",
+  "fluidlogistics.configuration.basinCapacityExpansionEnabled.tooltip": "启用后工作盆容量增加10倍，重启游戏后生效",
   "fluidlogistics.configuration.compressedTankCapacity": "压缩储罐容量",
   "fluidlogistics.configuration.compressedTankCapacity.tooltip": "压缩储罐可以容纳的最大流体量（单位：mB）",
   "fluidlogistics.configuration.fluidPackageCapacity": "流体包裹容量",

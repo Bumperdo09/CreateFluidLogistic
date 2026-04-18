@@ -5,6 +5,7 @@
     "compatibilityLevel": "JAVA_21",
     "mixins": [
         "accessor.StockTickerBlockEntityAccessor",
+        "basin.BasinBlockEntityMixin",
         "kinetics.BeltInventoryMixin",
         "kinetics.BeltProcessingBehaviourMixin",
         "logistics.DefaultUnpackingHandlerMixin",
@@ -33,6 +34,7 @@
         "client.ChainConveyorRendererMixin",
         "client.ChainConveyorVisualMixin",
         "client.CraftableBigItemStackMixin",
+        "client.BasinRendererMixin",
         "client.FactoryPanelBehaviourClientMixin",
         "client.FactoryPanelScreenMixin",
         "client.FactoryPanelSetItemScreenMixin",
