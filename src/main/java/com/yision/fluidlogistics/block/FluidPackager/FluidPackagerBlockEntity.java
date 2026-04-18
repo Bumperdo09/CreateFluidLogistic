@@ -15,7 +15,6 @@ import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
 import com.simibubi.create.content.fluids.tank.CreativeFluidTankBlockEntity.CreativeSmartFluidTank;
-import com.simibubi.create.api.packager.unpacking.UnpackingHandler;
 import com.simibubi.create.compat.computercraft.AbstractComputerBehaviour;
 import com.simibubi.create.compat.computercraft.events.PackageEvent;
 import com.simibubi.create.content.contraptions.actors.psi.PortableFluidInterfaceBlockEntity;
@@ -155,6 +154,16 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         return target != null && !(target instanceof PortableFluidInterfaceBlockEntity);
     }
 
+    @Nullable
+    private BlockEntity getFluidTargetBlockEntity() {
+        if (level == null) {
+            return null;
+        }
+        Direction facing = getBlockState().getOptionalValue(FluidPackagerBlock.FACING).orElse(Direction.UP);
+        BlockPos targetPos = worldPosition.relative(facing.getOpposite());
+        return level.getBlockEntity(targetPos);
+    }
+
     @Override
     public void initialize() {
         super.initialize();
@@ -206,8 +215,9 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         if (animationTicks == 0 && !level.isClientSide()) {
             if (animationInward && !pendingFluidsToInsert.isEmpty()) {
                 IFluidHandler fluidHandler = fluidTarget.getInventory();
+                BlockEntity targetBlockEntity = getFluidTargetBlockEntity();
                 boolean insertedAll = fluidHandler != null
-                    && FluidInsertionHelper.canAcceptAll(fluidHandler, pendingFluidsToInsert);
+                    && FluidInsertionHelper.canAcceptAll(targetBlockEntity, fluidHandler, pendingFluidsToInsert);
 
                 if (insertedAll) {
                     for (FluidStack fluid : pendingFluidsToInsert) {
@@ -570,16 +580,11 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         if (fluidHandler == null) {
             return false;
         }
+        BlockEntity targetBlockEntity = getFluidTargetBlockEntity();
 
-        List<FluidStack> packageFluids = new LinkedList<>();
-        for (ItemStack item : items) {
-            FluidStack fluid = CompressedTankItem.getFluid(item);
-            if (!fluid.isEmpty()) {
-                packageFluids.add(fluid.copy());
-            }
-        }
+        List<FluidStack> packageFluids = collectPackageFluids(items);
 
-        if (!packageFluids.isEmpty() && !FluidInsertionHelper.canAcceptAll(fluidHandler, packageFluids)) {
+        if (!packageFluids.isEmpty() && !FluidInsertionHelper.canAcceptAll(targetBlockEntity, fluidHandler, packageFluids)) {
             return false;
         }
 
@@ -588,12 +593,7 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         }
 
         pendingFluidsToInsert.clear();
-        for (ItemStack item : items) {
-            FluidStack fluid = CompressedTankItem.getFluid(item);
-            if (!fluid.isEmpty()) {
-                pendingFluidsToInsert.add(fluid.copy());
-            }
-        }
+        pendingFluidsToInsert.addAll(packageFluids);
 
         sendComputerEvent(box, "package_received");
         previouslyUnwrapped = box.copyWithCount(1);
@@ -604,25 +604,15 @@ public class FluidPackagerBlockEntity extends SmartBlockEntity implements Cleara
         return true;
     }
 
-    private boolean tryStandardUnpack(ItemStack box, boolean simulate, List<ItemStack> items) {
-        PackageOrderWithCrafts orderContext = PackageItem.getOrderContext(box);
-        Direction facing = getBlockState().getOptionalValue(FluidPackagerBlock.FACING).orElse(Direction.UP);
-        BlockPos target = worldPosition.relative(facing.getOpposite());
-        BlockState targetState = level.getBlockState(target);
-
-        UnpackingHandler handler = UnpackingHandler.REGISTRY.get(targetState);
-        UnpackingHandler toUse = handler != null ? handler : UnpackingHandler.DEFAULT;
-        boolean unpacked = toUse.unpack(level, target, targetState, facing, items, orderContext, simulate);
-
-        if (unpacked && !simulate) {
-            sendComputerEvent(box, "package_received");
-            previouslyUnwrapped = box;
-            animationInward = true;
-            animationTicks = CYCLE;
-            notifyUpdate();
+    private static List<FluidStack> collectPackageFluids(List<ItemStack> items) {
+        List<FluidStack> packageFluids = new LinkedList<>();
+        for (ItemStack item : items) {
+            FluidStack fluid = CompressedTankItem.getFluid(item);
+            if (!fluid.isEmpty()) {
+                packageFluids.add(fluid.copy());
+            }
         }
-
-        return unpacked;
+        return packageFluids;
     }
 
     public void updateSignAddress() {

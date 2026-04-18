@@ -1,5 +1,6 @@
 package com.yision.fluidlogistics.block.SmartFaucet;
 
+import com.simibubi.create.AllDataComponents;
 import com.simibubi.create.AllRecipeTypes;
 import com.simibubi.create.content.fluids.transfer.FillingRecipe;
 import com.simibubi.create.content.fluids.transfer.GenericItemFilling;
@@ -92,14 +93,17 @@ public final class SmartFaucetFilling {
             return ItemStack.EMPTY;
         }
 
-        ItemStack output = result.copy();
-        if (output.getItem() != input.getItem()) {
-            return output;
+        ItemStack preserved = new ItemStack(result.getItem(), result.getCount());
+        if (!input.isComponentsPatchEmpty()) {
+            preserved.applyComponents(input.getComponentsPatch());
         }
-
-        ItemStack preserved = input.copyWithCount(output.getCount());
-        if (!output.isComponentsPatchEmpty()) {
-            preserved.applyComponents(output.getComponentsPatch());
+        if (!result.isComponentsPatchEmpty()) {
+            preserved.applyComponents(result.getComponentsPatch());
+        }
+        if (result.has(AllDataComponents.SEQUENCED_ASSEMBLY)) {
+            preserved.set(AllDataComponents.SEQUENCED_ASSEMBLY, result.get(AllDataComponents.SEQUENCED_ASSEMBLY));
+        } else {
+            preserved.remove(AllDataComponents.SEQUENCED_ASSEMBLY);
         }
         return preserved;
     }

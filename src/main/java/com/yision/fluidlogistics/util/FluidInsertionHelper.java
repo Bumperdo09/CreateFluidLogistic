@@ -3,6 +3,12 @@ package com.yision.fluidlogistics.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.yision.fluidlogistics.handler.fluidpackage.FluidPackageTargetAdapter;
+import com.yision.fluidlogistics.handler.fluidpackage.FluidPackageTargetAdapters;
+
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
@@ -14,13 +20,16 @@ public final class FluidInsertionHelper {
     private record TankSnapshot(FluidStack fluid, int capacity) {
     }
 
-    public static boolean canAcceptAll(IFluidHandler fluidHandler, List<FluidStack> packageFluids) {
+    public static boolean canAcceptAll(@Nullable BlockEntity target, IFluidHandler fluidHandler, List<FluidStack> packageFluids) {
         if (packageFluids.isEmpty()) {
             return true;
         }
 
-        if (fluidHandler instanceof SharedCapacityFluidHandler sharedCapacityFluidHandler) {
-            return sharedCapacityFluidHandler.canFillAll(packageFluids);
+        if (target != null) {
+            FluidPackageTargetAdapter adapter = FluidPackageTargetAdapters.find(target, fluidHandler);
+            if (adapter != null) {
+                return adapter.canAcceptAll(target, fluidHandler, packageFluids);
+            }
         }
 
         List<TankSnapshot> tankSnapshots = new ArrayList<>();
