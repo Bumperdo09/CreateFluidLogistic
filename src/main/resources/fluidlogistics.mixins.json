@@ -36,6 +36,7 @@
         "client.CraftableBigItemStackMixin",
         "client.BasinRendererMixin",
         "client.FactoryPanelBehaviourClientMixin",
+        "client.FactoryPanelConnectionHandlerMixin",
         "client.FactoryPanelScreenMixin",
         "client.FactoryPanelSetItemScreenMixin",
         "client.GoggleOverlayRendererMixin",

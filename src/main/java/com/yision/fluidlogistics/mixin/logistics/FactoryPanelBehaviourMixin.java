@@ -153,6 +153,34 @@ public abstract class FactoryPanelBehaviourMixin {
     }
 
     @Inject(
+        method = "tickRequests",
+        at = @At(
+            value = "INVOKE",
+            target = "Lcom/simibubi/create/content/logistics/factoryBoard/FactoryPanelBehaviour;resetTimer()V",
+            shift = At.Shift.AFTER
+        ),
+        cancellable = true,
+        remap = false
+    )
+    private void fluidlogistics$limitNonRestockFluidPromises(CallbackInfo ci) {
+        FactoryPanelBehaviour self = (FactoryPanelBehaviour) (Object) this;
+        if (self.panelBE().restocker || !FluidGaugeHelper.isVirtualFluidFilter(self)) {
+            return;
+        }
+
+        if (!(self instanceof IFluidPromiseLimit promiseLimitData)
+            || !promiseLimitData.fluidlogistics$hasPromiseLimit()) {
+            return;
+        }
+
+        int limit = promiseLimitData.fluidlogistics$getPromiseLimit();
+        int nextPromise = Math.max(1, self.recipeOutput);
+        if (limit <= 0 || self.getPromised() + nextPromise > limit) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
         method = "tryRestock",
         at = @At("HEAD"),
         remap = false

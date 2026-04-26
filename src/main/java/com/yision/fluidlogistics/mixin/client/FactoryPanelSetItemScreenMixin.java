@@ -1,5 +1,7 @@
 package com.yision.fluidlogistics.mixin.client;
 
+import java.util.List;
+
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,6 +14,7 @@ import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelSetItemMen
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelSetItemScreen;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.menu.GhostItemSubmitPacket;
+import com.yision.fluidlogistics.client.FluidTooltipHelper;
 import com.yision.fluidlogistics.item.CompressedTankItem;
 import com.yision.fluidlogistics.render.FluidSlotRenderer;
 
@@ -76,5 +79,23 @@ public abstract class FactoryPanelSetItemScreenMixin extends AbstractSimiContain
             }
         }
         super.renderSlot(graphics, slot);
+    }
+
+    @Override
+    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+        if (this.hoveredSlot instanceof SlotItemHandler) {
+            int slotIndex = this.hoveredSlot.getSlotIndex();
+            if (slotIndex >= 0 && slotIndex < menu.ghostInventory.getSlots()) {
+                ItemStack ghostStack = menu.ghostInventory.getStackInSlot(slotIndex);
+                if (ghostStack.getItem() instanceof CompressedTankItem && CompressedTankItem.isVirtual(ghostStack)) {
+                    FluidStack fluid = CompressedTankItem.getFluid(ghostStack);
+                    if (!fluid.isEmpty()) {
+                        return FluidTooltipHelper.getTooltipLines(fluid);
+                    }
+                }
+            }
+        }
+
+        return super.getTooltipFromContainerItem(stack);
     }
 }
